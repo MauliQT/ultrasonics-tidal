@@ -132,7 +132,7 @@ The official **ultrasonics** image is located at [xdgfx/ultrasonics](https://hub
 version: "3.7"
 services:
   ultrasonics:
-    image: xdgfx/ultrasonics
+    image: mauliqt/ultrasonics:1.1
     container_name: ultrasonics
     restart: unless-stopped
 
