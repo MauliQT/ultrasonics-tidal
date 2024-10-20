@@ -40,7 +40,7 @@ The overview of all included plugins can be found at [documentation incomplete].
 
 The official **ultrasonics** image is located at [xdgfx/ultrasonics](https://hub.docker.com/r/xdgfx/ultrasonics). You can pull and run it manually, or stick it in your `docker-compose.yml` file. !This is the old **ultrasonics** image which isn't working properly and doesnt have tidal integration.
 
-The tidal **ultrasonics** image is located at [mauliqt/ultrasonics](https://github.com/MauliQT/ultrasonics-api-self-hosted). You can pull it manually, or stick it in your `docker-compose.yml`
+The tidal **ultrasonics** image is located at [mauliqt/ultrasonics](https://hub.docker.com/r/mauliqt/ultrasonics). You can pull it manually, or stick it in your `docker-compose.yml`
 
 ```yaml
 version: "3.7"
