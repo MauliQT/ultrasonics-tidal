@@ -1,17 +1,17 @@
 ![](https://raw.githubusercontent.com/XDGFX/ultrasonics/master/ultrasonics/static/images/logo.svg)
 
-> ## Update 2022
-> **ultrasonics** is not depricated, but I don't have as much time as I'd like to work on developing it. I plan to get back to it in the future, I hope you can bear with me! An important upcoming update is regarding [**ultrasonics-api**](https://github.com/XDGFX/ultrasonics-api). I'm currently hosting a public version on Heroku free tier, which is shutting down at the end of November 2022 [as announced back in August](https://techcrunch.com/2022/08/25/heroku-announces-plans-to-eliminate-free-plans-blaming-fraud-and-abuse/). It's needed for any public streaming services (Spotify, Last.fm, etc).
+> ## Update 2024
+> **ultrasonics** is is up and running again, now with Tidal and working.
 >
-> I don't have any alternative set up yet, so before that time comes I urge you to set up your own [**ultrasonics-api**](https://github.com/XDGFX/ultrasonics-api) instance alongside **ultrasonics**, and keys for any online services you want to sync with. The instructions are all available over on that repo!
+> The offical api is offline and had some issues with ease of installation, especially regarding redirect-uri's this has been fixed  [**ultrasonics-api**](https://github.com/MauliQT/ultrasonics-api-self-hosted). 
+>
+> To use **ultrasonics** at its full potential i urge you to set up your own [**ultrasonics-api**](https://github.com/MauliQT/ultrasonics-api-self-hosted) instance alongside **ultrasonics**, and keys for any online services you want to sync with. The instructions are all available over on that repo!
 
 ---
 
 - [Overview](#overview)
 - [Installation](#installation)
-  - [Option 1 (Manual Install)](#option-1-manual-install)
-    - [systemd](#systemd)
-  - [Option 2 (Docker)](#option-2-docker)
+  - [(Docker)]
 - [Applets](#applets)
     - [Inputs](#inputs)
     - [Modifiers (Optional)](#modifiers-optional)
@@ -36,97 +36,11 @@ The overview of all included plugins can be found at [documentation incomplete].
 
 # Installation
 
-To run **ultrasonics** you have two options:
+## (Docker)
 
-1. Download and run **ultrasonics** directly.
-2. Pull and run the official docker image.
+The official **ultrasonics** image is located at [xdgfx/ultrasonics](https://hub.docker.com/r/xdgfx/ultrasonics). You can pull and run it manually, or stick it in your `docker-compose.yml` file. !This is the old **ultrasonics** image which isn't working properly and doesnt have tidal integration.
 
-## Option 1 (Manual Install)
-
-> **ultrasonics** was developed on Linux. It should be cross-platform compatible, but it's not been tested so be ready for bugs or issues on Windows / macOS!
-
-1. Make sure you have Python 3 installed
-
-    ```bash
-    # If this command doesn't work, install Python 3
-    callum at uluru in ~
-    ↪ python3 --version
-    Python 3.8.2
-    ```
-
-2. Clone the repo to an install directory, maybe `/opt/ultrasonics`
-
-    ```bash
-    # Move to your install directory
-    callum at uluru in ~
-    ↪ cd /opt
-
-    # Clone this repo
-    callum at uluru in /opt
-    ↪ git clone https://github.com/XDGFX/ultrasonics
-
-    # Make sure you have ownership of the ultrasonics folder
-    callum at uluru in /opt
-    ↪ sudo chown -R callum:callum ultrasonics/
-    ```
-
-3. Create a virtual environment, and install the required dependencies inside it.
-
-    ```bash
-    # Move into the ultrasonics directory
-    callum at uluru in /opt
-    ↪ cd ultrasonics
-
-    # Create a virtual environment in the folder '.venv'
-    callum at uluru in /o/ultrasonics
-    ↪ python3 -m venv .venv
-
-    # Activate the environment.
-    # If you're using a different shell use activate.<shell>
-    # e.g. source .venv/bin/activate.fish for fish!
-    callum at uluru in /o/ultrasonics
-    ↪ source .venv/bin/activate
-
-    # Ensure your venv is active (see the .venv at the start of the line)
-    # Install the Python dependencies
-    callum at uluru in /o/ultrasonics
-    (.venv) ↪ pip3 install -r requirements.txt
-    ```
-
-4. Run `app.py`
-
-    ```bash
-    # With the venv still active, run app.py
-    callum at uluru in /o/ultrasonics
-    (.venv) ↪ python3 app.py
-    ```
-
-### systemd
-If you want to run this as a systemd process, follow the steps below:
-1. Copy the example service file to `/etc/systemd/system/ultrasonics.service`
-    ```bash
-    sudo cp ultrasonics.service /etc/systemd/system/ultrasonics.service
-    ```
-
-2. Reload the systemctl daemon to pick up the new service
-
-   ```bash
-   sudo systemctl daemon-reload
-    ```
-3. Enable and start the service
-
-    ```bash
-    sudo systemctl enable --now ultrasonics
-    ```
-4. You can check the status of the process using:
-
-    ```bash
-    systemctl status ultrasonics
-    ```
-
-## Option 2 (Docker)
-
-The official **ultrasonics** image is located at [xdgfx/ultrasonics](https://hub.docker.com/r/xdgfx/ultrasonics). You can pull and run it manually, or stick it in your `docker-compose.yml` file.
+The tidal **ultrasonics** image is located at [mauliqt/ultrasonics](https://github.com/MauliQT/ultrasonics-api-self-hosted). You can pull it manually, or stick it in your `docker-compose.yml`
 
 ```yaml
 version: "3.7"
