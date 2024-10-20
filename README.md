@@ -11,7 +11,7 @@
 
 - [Overview](#overview)
 - [Installation](#installation)
-  - [(Docker)]
+  - [(Docker)](#docker)
 - [Applets](#applets)
     - [Inputs](#inputs)
     - [Modifiers (Optional)](#modifiers-optional)
