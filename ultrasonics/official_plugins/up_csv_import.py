@@ -3,31 +3,25 @@
 """
 up_csv_import
 
-Input plugin for importing playlists and songs from a CSV file.
+Input plugin for importing playlists and songs from a CSV file or a folder of CSV files.
 
-Two main use-cases are supported:
+Three main use-cases are supported:
 
-1. **Exportify-style CSV (default)**
-   - One playlist per CSV file (e.g. `Liked_Songs.csv`).
+1. **Single file – playlist name from file name (Exportify style)**
+   - One playlist per CSV file (e.g. `Liked_Songs.csv` → playlist "Liked_Songs").
    - The playlist name is taken from the *file name*.
-   - Typical Exportify columns:
-     - `Track Name`, `Artist Name`, `Album Name`, `Track ID`, `Track URI`, etc.
+   - Typical Exportify columns: `Track Name`, `Artist Name`, `Album Name`, etc.
 
-2. **Generic multi-playlist CSV**
-   - A single CSV file contains multiple playlists and a `playlist` column.
+2. **Folder of CSV files**
+   - Point "Path" to a folder; every `.csv` file in that folder is imported.
+   - One playlist is created per CSV file, named after the file (without extension).
+   - Same column format as (1). Subfolders are not scanned unless "Include subfolders" is Yes.
+
+3. **Single file – playlist name from CSV column (multi-playlist CSV)**
+   - One CSV file contains multiple playlists and a `playlist` column.
    - Expected default CSV format (with header):
 
         playlist,title,artists,album,date,isrc,location,spotify_id,tidal_id
-
-     - **playlist**: playlist name
-     - **title**: track title (required)
-     - **artists**: one or more artist names separated by `;` (optional)
-     - **album**: album name (optional)
-     - **date**: release date as free text (optional)
-     - **isrc**: ISRC code (optional)
-     - **location**: local file path to the audio file, if any (optional)
-     - **spotify_id**: raw Spotify track ID (not URI) (optional)
-     - **tidal_id**: raw Tidal track ID (optional)
 
 You can override the column names in the plugin settings if your CSV uses
 different headers (for Exportify, sensible defaults are provided).
@@ -37,6 +31,7 @@ XDGFX, 2026 (csv import plugin)
 
 import csv
 import os
+import glob
 
 from ultrasonics import logs
 from ultrasonics.tools import name_filter
@@ -49,18 +44,25 @@ handshake = {
     "description": "import playlists and songs from a csv file",
     "type": ["inputs"],
     "mode": ["playlists"],
-    "version": "0.2",
+    "version": "0.3",
     "settings": [
         {
             "type": "string",
-            "value": "This plugin reads playlists and songs from a CSV file and converts them into ultrasonics format.",
+            "value": "This plugin reads playlists and songs from a CSV file (or a folder of CSV files) and converts them into ultrasonics format. A folder creates one playlist per CSV file.",
         },
         {
             "type": "text",
-            "label": "CSV File Path",
+            "label": "CSV File or Folder Path",
             "name": "path",
-            "value": "/path/to/playlists.csv",
+            "value": "/path/to/playlists.csv or /path/to/csv_folder",
             "required": True,
+        },
+        {
+            "type": "radio",
+            "label": "Include Subfolders (when path is a folder)",
+            "name": "include_subfolders",
+            "id": "include_subfolders",
+            "options": ["No", "Yes"],
         },
         {
             "type": "text",
@@ -233,6 +235,66 @@ def _row_to_track(row, field_names, header_map=None):
     return track
 
 
+def _read_one_csv_as_playlist(path, delimiter, has_header, field_names):
+    """
+    Read a single CSV file with "From file name" semantics.
+    Returns one playlist dict {"name": ..., "id": {}, "songs": [...]} or None if no tracks.
+    """
+    playlist_name = os.path.splitext(os.path.basename(path))[0]
+    tracks = []
+
+    with open(path, "r", encoding="utf-8") as f:
+        if has_header:
+            reader = csv.DictReader(f, delimiter=delimiter)
+            header_map = {h.lower(): h for h in (reader.fieldnames or []) if h}
+
+            for row in reader:
+                track = _row_to_track(row, field_names, header_map=header_map)
+                if not track:
+                    continue
+                tracks.append(track)
+        else:
+            reader = csv.reader(f, delimiter=delimiter)
+            for row in reader:
+                if not row or all(not (cell or "").strip() for cell in row):
+                    continue
+
+                padded = list(row) + ["" for _ in range(max(0, 8 - len(row)))]
+
+                row_dict = {
+                    field_names["title"]: padded[0],
+                    field_names["artists"]: padded[1],
+                    field_names["album"]: padded[2],
+                    field_names["date"]: padded[3],
+                    field_names["isrc"]: padded[4],
+                    field_names["location"]: padded[5],
+                    field_names["spotify_id"]: padded[6],
+                    field_names["tidal_id"]: padded[7],
+                }
+
+                track = _row_to_track(row_dict, field_names)
+                if not track:
+                    continue
+
+                tracks.append(track)
+
+    if not tracks:
+        return None
+    return {
+        "name": playlist_name,
+        "id": {},
+        "songs": tracks,
+    }
+
+
+def _csv_files_in_folder(folder_path, include_subfolders):
+    """Return sorted list of .csv file paths in folder (optionally in subfolders)."""
+    if include_subfolders:
+        pattern = os.path.join(folder_path, "**", "*.csv")
+        return sorted(glob.glob(pattern))
+    return sorted(glob.glob(os.path.join(folder_path, "*.csv")))
+
+
 def run(settings_dict, **kwargs):
     """
     Reads a CSV file and returns a songs_dict in playlists mode.
@@ -254,14 +316,15 @@ def run(settings_dict, **kwargs):
 
     path = (settings_dict.get("path") or "").strip()
     if not path:
-        raise Exception("CSV File Path is required.")
+        raise Exception("CSV File or Folder Path is required.")
 
-    if not os.path.isfile(path):
-        raise Exception(f"CSV file does not exist: {path}")
+    if not os.path.isfile(path) and not os.path.isdir(path):
+        raise Exception(f"Path does not exist (file or folder): {path}")
 
     delimiter = (settings_dict.get("delimiter") or ",") or ","
     has_header = (settings_dict.get("has_header") or "Yes") == "Yes"
     playlist_source = (settings_dict.get("playlist_source") or "From file name").strip()
+    include_subfolders = (settings_dict.get("include_subfolders") or "No") == "Yes"
 
     # Resolve column names
     field_names = {
@@ -278,58 +341,30 @@ def run(settings_dict, **kwargs):
 
     songs_dict = []
 
-    # --- Case 1: playlist name comes from file name (Exportify style) ---
-    if playlist_source == "From file name":
-        playlist_name = os.path.splitext(os.path.basename(path))[0]
-        tracks = []
+    # --- Folder: one playlist per CSV file ---
+    if os.path.isdir(path):
+        csv_paths = _csv_files_in_folder(path, include_subfolders)
+        if not csv_paths:
+            log.warning(f"No CSV files found in folder: {path}")
+        for csv_path in csv_paths:
+            try:
+                playlist = _read_one_csv_as_playlist(
+                    csv_path, delimiter, has_header, field_names
+                )
+                if playlist:
+                    songs_dict.append(playlist)
+            except Exception as e:
+                log.warning(f"Skipping {csv_path}: {e}")
 
-        with open(path, "r", encoding="utf-8") as f:
-            if has_header:
-                reader = csv.DictReader(f, delimiter=delimiter)
-                header_map = {h.lower(): h for h in (reader.fieldnames or []) if h}
+    # --- Single file: playlist name from file name (Exportify style) ---
+    elif playlist_source == "From file name":
+        playlist = _read_one_csv_as_playlist(
+            path, delimiter, has_header, field_names
+        )
+        if playlist:
+            songs_dict.append(playlist)
 
-                for row in reader:
-                    track = _row_to_track(row, field_names, header_map=header_map)
-                    if not track:
-                        continue
-                    tracks.append(track)
-            else:
-                # No header: assume fixed order without playlist column:
-                # title, artists, album, date, isrc, location, spotify_id, tidal_id
-                reader = csv.reader(f, delimiter=delimiter)
-                for row in reader:
-                    if not row or all(not (cell or "").strip() for cell in row):
-                        continue
-
-                    padded = list(row) + ["" for _ in range(max(0, 8 - len(row)))]
-
-                    row_dict = {
-                        field_names["title"]: padded[0],
-                        field_names["artists"]: padded[1],
-                        field_names["album"]: padded[2],
-                        field_names["date"]: padded[3],
-                        field_names["isrc"]: padded[4],
-                        field_names["location"]: padded[5],
-                        field_names["spotify_id"]: padded[6],
-                        field_names["tidal_id"]: padded[7],
-                    }
-
-                    track = _row_to_track(row_dict, field_names)
-                    if not track:
-                        continue
-
-                    tracks.append(track)
-
-        if tracks:
-            songs_dict.append(
-                {
-                    "name": playlist_name,
-                    "id": {},
-                    "songs": tracks,
-                }
-            )
-
-    # --- Case 2: playlist name comes from CSV column (multi-playlist CSV) ---
+    # --- Single file: playlist name from CSV column (multi-playlist CSV) ---
     else:
         playlists = {}
 
@@ -400,7 +435,7 @@ def run(settings_dict, **kwargs):
     if regex:
         songs_dict = name_filter.filter(songs_dict, regex)
 
-    log.info(f"Imported {len(songs_dict)} playlist(s) from CSV file {path}.")
+    log.info(f"Imported {len(songs_dict)} playlist(s) from {path}.")
     return songs_dict
 
 

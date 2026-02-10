@@ -82,7 +82,8 @@
 
 
             <form id="configure_plugin"
-                action="{% if persistent == 1 %}/configure_plugin{% else %}/new_applet{% endif %}" method="post">
+                action="{% if persistent == 1 %}/configure_plugin{% else %}/new_applet{% endif %}" method="post"
+                enctype="multipart/form-data">
 
                 <!-- Hidden inputs to store variables for current plugin -->
                 <input type="hidden" name="action" value="add" id="configure_plugin_action">
@@ -127,6 +128,14 @@
                             placeholder="{{ setting['value'] }}" {% if setting.get("required")==True %}required{% endif
                             %}>
                     </div>
+
+                    {% if plugin == "csv_import" and setting["name"] == "path" %}
+                    <p class="help">Alternatively, upload a CSV file below and ultrasonics will store it and fill in the
+                        path for you.</p>
+                    <div class="control" style="margin-top: 0.5rem;">
+                        <input class="input" type="file" name="csv_file" accept=".csv,text/csv">
+                    </div>
+                    {% endif %}
                 </div>
 
                 {% elif setting["type"] == "radio" %}
