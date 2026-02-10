@@ -45,7 +45,7 @@ log = logs.create_log(__name__)
 
 
 handshake = {
-    "name": "csv import",
+    "name": "csv_import",
     "description": "import playlists and songs from a csv file",
     "type": ["inputs"],
     "mode": ["playlists"],
